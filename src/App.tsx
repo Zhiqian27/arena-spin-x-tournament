@@ -7,6 +7,7 @@ import { ScoreReveal } from './components/ScoreReveal'
 import { useRankingAnimation } from './hooks/useRankingAnimation'
 import { useSocketRankingEvents } from './hooks/useSocketRankingEvents'
 import type { RankingEntry } from './ranking/types'
+import logoUrl from '../image/logo.png'
 
 type StageKey = 'women' | 'men' | 'duo' | 'team'
 type Scores = Record<StageKey, number[]>
@@ -86,7 +87,7 @@ function Display({ teams, announcement }: { teams: Team[], announcement: Announc
   useSocketRankingEvents(replaceRanking, applyUpdate)
   return <main className="display-screen team-display">
     <div className="display-grid" />
-    <img className="screen-logo" src="/image/logo.png" alt="赛事 Logo" />
+    <img className="screen-logo" src={logoUrl} alt="赛事 Logo" />
     <RankingBoard ranking={ranking} phase={phase} change={change} highlightedTeamId={highlightedTeamId} />
     {phase === 'revealingScore' && announcedTeam && <ScoreReveal team={announcedTeam} />}
     <RankChangeOverlay phase={phase} change={change} />
