@@ -1,0 +1,27 @@
+{
+  "name": "spinx-live-scoring",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "test": "vitest run",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "framer-motion": "^12.42.2",
+    "lucide-react": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "socket.io-client": "^4.8.3",
+    "typescript": "latest",
+    "vite": "latest"
+  },
+  "devDependencies": {
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "vitest": "^4.1.10"
+  }
+}
