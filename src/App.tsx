@@ -35,8 +35,7 @@ const initialTeams: Team[] = [
   { id: 8, drawOrder: 8, name: 'H Infinite', color: '#e46dc8', female: '女子选手 H', male: '男子选手 H', duo: '双人选手 H1 / H2', scores: { women: scoreSet(3), men: scoreSet(3), duo: scoreSet(3), team: scoreSet(6) } },
 ]
 
-const clamp = (value: number) => Math.max(0, Math.min(10, Math.round(value)))
-const normalizeScore = (value: number) => clamp(value)
+const normalizeScore = (value: number) => Number.isFinite(value) ? value : 0
 const stageTotal = (team: Team, stage: StageKey) => calculateStageScore(team.scores[stage], stage)
 const totalScore = (team: Team) => STAGES.reduce((total, stage) => total + stageTotal(team, stage.key), 0)
 const cloneTeams = (teams: Team[]) => teams.map(team => ({ ...team, scores: Object.fromEntries(STAGES.map(stage => [stage.key, [...team.scores[stage.key]]])) as Scores }))
@@ -102,7 +101,7 @@ function Control({ teams, setTeams, publish }: { teams: Team[], setTeams: Dispat
   const [draggedTeamId, setDraggedTeamId] = useState<number | null>(null)
   const [dropTarget, setDropTarget] = useState<{ teamId: number, position: 'before' | 'after' } | null>(null)
   const stage = STAGES.find(item => item.key === stageKey)!
-  const updateScore = (teamId: number, judgeIndex: number, next: number) => setTeams(current => current.map(team => team.id === teamId ? { ...team, submittedAt: Date.now(), scores: { ...team.scores, [stageKey]: team.scores[stageKey].map((score, index) => index === judgeIndex ? clamp(next) : score) } } : team))
+  const updateScore = (teamId: number, judgeIndex: number, next: number) => setTeams(current => current.map(team => team.id === teamId ? { ...team, submittedAt: Date.now(), scores: { ...team.scores, [stageKey]: team.scores[stageKey].map((score, index) => index === judgeIndex ? normalizeScore(next) : score) } } : team))
   const saveTeam = (form: TeamForm) => { setTeams(current => editingTeam ? current.map(team => team.id === editingTeam.id ? { ...team, ...form } : team) : [...current, { ...form, id: Date.now(), drawOrder: current.length + 1, scores: { women: scoreSet(3), men: scoreSet(3), duo: scoreSet(3), team: scoreSet(6) } }]); setEditingTeam(null); setAdding(false) }
   const removeTeam = (team: Team) => { if (window.confirm(`确定删除“${team.name}”吗？`)) setTeams(current => current.filter(item => item.id !== team.id)) }
   const resetScores = () => {
@@ -123,7 +122,7 @@ function Control({ teams, setTeams, publish }: { teams: Team[], setTeams: Dispat
   return <main className="control-page"><section className="control-content team-control">
     <header className="control-header"><div><p>赛事控制台 · 团队总积分赛</p><h1>2026 Spin-X Tournament</h1></div><button className="display-button" onClick={() => window.open(`${window.location.pathname}?view=display`, '_blank', 'noopener,noreferrer')}><ExternalLink size={18} />打开观赛大屏</button></header>
     <div className="format-note"><b>赛制说明</b><span>个人赛直接累计；双人赛总分 × 1.25；团体赛总分 ÷ 2 × 1.5，四个项目加总为团队总分。</span></div>
-    <div className="stage-tabs" role="tablist">{STAGES.map(item => <button className={item.key === stageKey ? 'active' : ''} onClick={() => setStageKey(item.key)} key={item.key}><span>{item.name}</span><small>{item.judges} 位评审 · 0–10 整数分</small></button>)}</div>
+    <div className="stage-tabs" role="tablist">{STAGES.map(item => <button className={item.key === stageKey ? 'active' : ''} onClick={() => setStageKey(item.key)} key={item.key}><span>{item.name}</span><small>{item.judges} 位评审 · 自由输入分数</small></button>)}</div>
     <section className="panel info-panel publish-panel"><span className="eyebrow">当前录入 · {stage.name}</span><strong>草稿不会自动显示</strong><p>完成任一项目评分后，点击发布，观赛大屏会按四个项目的累计总分重新排名。</p><button className="publish-button" onClick={publish}>更新总积分至观赛大屏</button><button className="reset-button" onClick={resetScores}>重置所有分数</button></section>
     <section className="panel scoring-panel"><div className="panel-heading"><span>{stage.name} · 评分录入</span><div className="score-actions"><small>拖动团队左侧把手调整顺序；{stage.judges} 位评审，按该项目规则计算小计</small><button className="add-player" onClick={() => setAdding(true)}><UserPlus size={15} />添加团队</button></div></div><div className="stage-table"><div className="stage-head"><span>团队</span><span>{stageKey === 'team' ? '参赛团队' : '本项目参赛者'}</span><span>评审打分</span><span>本项目总分</span></div>{teams.map(team => <div className={`stage-row ${draggedTeamId === team.id ? 'dragging' : ''} ${dropTarget?.teamId === team.id ? `drop-${dropTarget.position}` : ''}`} key={team.id} draggable onDragStart={() => setDraggedTeamId(team.id)} onDragEnd={() => { setDraggedTeamId(null); setDropTarget(null) }} onDragOver={event => { event.preventDefault(); const bounds = event.currentTarget.getBoundingClientRect(); setDropTarget({ teamId: team.id, position: event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after' }) }} onDrop={() => { if (draggedTeamId && dropTarget) moveTeam(draggedTeamId, team.id, dropTarget.position); setDraggedTeamId(null); setDropTarget(null) }}><div className="team-mini"><span className="drag-handle" title="拖动调整团队顺序"><GripVertical size={17} /></span><i style={{ background: team.color }} /><strong>{team.name}</strong></div><div className="member-name">{team[stage.member]}</div><div className="judge-inputs">{team.scores[stageKey].map((score, index) => <div className="score-control" key={index}><button onClick={() => updateScore(team.id, index, score - 1)}><Minus size={13} /></button><ScoreInput score={score} label={`${team.name} 第 ${index + 1} 位评审`} onChange={value => updateScore(team.id, index, value)} /><button onClick={() => updateScore(team.id, index, score + 1)}><Plus size={13} /></button></div>)}</div><strong className="control-total">{formatScore(stageTotal(team, stageKey))}</strong><div className="team-row-actions"><button onClick={() => setEditingTeam(team)} aria-label="编辑团队"><Pencil size={14} /></button><button onClick={() => removeTeam(team)} aria-label="删除团队"><Trash2 size={14} /></button></div></div>)}</div></section>
   </section>{(adding || editingTeam) && <TeamModal team={editingTeam} onClose={() => { setAdding(false); setEditingTeam(null) }} onSave={saveTeam} />}</main>
@@ -132,8 +131,8 @@ function Control({ teams, setTeams, publish }: { teams: Team[], setTeams: Dispat
 function ScoreInput({ score, label, onChange }: { score: number, label: string, onChange: (value: number) => void }) {
   const [value, setValue] = useState(String(score))
   useEffect(() => setValue(String(score)), [score])
-  const commit = (raw: string) => { const normalized = raw === '' ? 0 : clamp(Number(raw)); setValue(String(normalized)); onChange(normalized) }
-  return <input aria-label={label} type="number" min="0" max="10" step="1" value={value} onChange={event => { const next = event.target.value; setValue(next); if (next !== '' && Number.isFinite(Number(next))) onChange(clamp(Number(next))) }} onBlur={event => commit(event.target.value)} />
+  const commit = (raw: string) => { const normalized = raw === '' ? 0 : normalizeScore(Number(raw)); setValue(String(normalized)); onChange(normalized) }
+  return <input aria-label={label} type="number" step="any" value={value} onChange={event => { const next = event.target.value; setValue(next); if (next !== '' && Number.isFinite(Number(next))) onChange(normalizeScore(Number(next))) }} onBlur={event => commit(event.target.value)} />
 }
 
 function TeamModal({ team, onClose, onSave }: { team: Team | null, onClose: () => void, onSave: (form: TeamForm) => void }) {
