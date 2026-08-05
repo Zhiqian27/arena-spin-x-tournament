@@ -27,21 +27,8 @@ const STORE_KEY = 'spinx-team-tournament-v2'
 const ARCHIVE_STORE_KEY = 'spinx-team-tournament-archives-v1'
 const EVENT_NAME = '2026 Spin-X Tournament'
 const scoreSet = (count: number) => Array.from({ length: count }, () => 0)
-const initialTeams: Team[] = [
-  { id: 1, drawOrder: 1, name: '格蕾西亚', color: '#8a68ff', female: '杨靖熙', male: '闵维钲', duo: '许凯泽 / 曾科杰', scores: { women: scoreSet(3), men: scoreSet(3), duo: scoreSet(3), team: scoreSet(6) } },
-  { id: 2, drawOrder: 2, name: '循人中学B队', color: '#26d9bd', female: '邝芊心', male: '彭浩境', duo: '黄健盛 / 周骏彬', scores: { women: scoreSet(3), men: scoreSet(3), duo: scoreSet(3), team: scoreSet(6) } },
-  { id: 3, drawOrder: 3, name: '梳邦校友队', color: '#ffbc4d', female: '曾依玲', male: '吴子轩', duo: '游凯竣 / 林汇勇', scores: { women: scoreSet(3), men: scoreSet(3), duo: scoreSet(3), team: scoreSet(6) } },
-  { id: 4, drawOrder: 4, name: 'King Minions', color: '#f264b6', female: '张乐儿', male: '李治颖', duo: '梁乐瑶 / 张艾嘉', scores: { women: scoreSet(3), men: scoreSet(3), duo: scoreSet(3), team: scoreSet(6) } },
-  { id: 5, drawOrder: 5, name: '可不可以', color: '#5caaff', female: '蔡宝琪', male: '陈展晖', duo: '吴芷芊 / 蔡惠亦', scores: { women: scoreSet(3), men: scoreSet(3), duo: scoreSet(3), team: scoreSet(6) } },
-  { id: 6, drawOrder: 6, name: '乐圣华小', color: '#fa7c57', female: '林妍霓', male: '黃俊翔', duo: '林宸名 / 陈志堂', scores: { women: scoreSet(3), men: scoreSet(3), duo: scoreSet(3), team: scoreSet(6) } },
-  { id: 7, drawOrder: 7, name: '循人中学A队', color: '#8bc34a', female: '钟伟乔', male: '王浩熙', duo: '叶倬宇 / 刘铠滕', scores: { women: scoreSet(3), men: scoreSet(3), duo: scoreSet(3), team: scoreSet(6) } },
-  { id: 8, drawOrder: 8, name: 'Team Up Diabolo', color: '#e46dc8', female: '林侣廷', male: '陈祉邑', duo: '陈祉佑 / 温俊腾', scores: { women: scoreSet(3), men: scoreSet(3), duo: scoreSet(3), team: scoreSet(6) } },
-  { id: 9, drawOrder: 9, name: '锡米山校友队', color: '#6fd6ff', female: '官妤玹', male: '余星俊', duo: '曾宇森 / 彭政晖', scores: { women: scoreSet(3), men: scoreSet(3), duo: scoreSet(3), team: scoreSet(6) } },
-  { id: 10, drawOrder: 10, name: 'Fanta Stick 4', color: '#d6a1ff', female: '刘洆沁', male: '林苡庸', duo: '戴宗礼 / 孙子惞', scores: { women: scoreSet(3), men: scoreSet(3), duo: scoreSet(3), team: scoreSet(6) } },
-]
-
-const oldExampleNames = ['A Infinite', 'B Infinite', 'C Infinite', 'D Infinite', 'E Infinite', 'F Infinite', 'G Infinite', 'H Infinite']
-const isOldExampleRoster = (teams?: Team[]) => teams?.length === oldExampleNames.length && teams.every((team, index) => team.name === oldExampleNames[index])
+const initialColors = ['#8a68ff', '#26d9bd', '#ffbc4d', '#f264b6', '#5caaff', '#fa7c57', '#8bc34a', '#e46dc8']
+const initialTeams: Team[] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].map((letter, index) => ({ id: index + 1, drawOrder: index + 1, name: `${letter} Infinite`, color: initialColors[index], female: `女子选手 ${letter}`, male: `男子选手 ${letter}`, duo: `双人选手 ${letter}1 / ${letter}2`, scores: { women: scoreSet(3), men: scoreSet(3), duo: scoreSet(3), team: scoreSet(6) } }))
 
 const normalizeScore = (value: number) => Number.isFinite(value) ? value : 0
 const stageTotal = (team: Team, stage: StageKey) => calculateStageScore(team.scores[stage], stage)
@@ -68,8 +55,8 @@ const downloadArchive = (archive: TournamentArchive) => {
 function useTournament() {
   const saved = localStorage.getItem(STORE_KEY)
   const parsed = saved ? JSON.parse(saved) : null
-  const [teams, setTeams] = useState<Team[]>(() => normalizeTeams(isOldExampleRoster(parsed?.teams) ? initialTeams : parsed?.teams ?? initialTeams))
-  const [publishedTeams, setPublishedTeams] = useState<Team[]>(() => normalizeTeams(isOldExampleRoster(parsed?.publishedTeams) ? initialTeams : parsed?.publishedTeams ?? initialTeams))
+  const [teams, setTeams] = useState<Team[]>(() => normalizeTeams(parsed?.teams ?? initialTeams))
+  const [publishedTeams, setPublishedTeams] = useState<Team[]>(() => normalizeTeams(parsed?.publishedTeams ?? initialTeams))
   const [announcement, setAnnouncement] = useState<Announcement>(parsed?.announcement ?? null)
   const [eventName, setEventName] = useState<string>(() => typeof parsed?.eventName === 'string' ? parsed.eventName : EVENT_NAME)
   useEffect(() => { localStorage.setItem(STORE_KEY, JSON.stringify({ teams, publishedTeams, announcement, eventName })) }, [teams, publishedTeams, announcement, eventName])
@@ -176,11 +163,10 @@ function Control({ eventName, setEventName, teams, setTeams, publishedTeams, set
   const startNewTournament = () => {
     const nextName = window.prompt('请输入下一届赛事名称', EVENT_NAME)
     if (nextName === null) return
-    if (!window.confirm('确定开启下一届赛事吗？当前成绩将被清空，请先保存本届成绩。')) return
-    const reset = (current: Team[]) => current.map(team => ({ ...team, submittedAt: undefined, scores: { women: scoreSet(3), men: scoreSet(3), duo: scoreSet(3), team: scoreSet(6) } }))
+    if (!window.confirm('确定开启下一届赛事吗？当前队伍资料与成绩都会重置为 8 个基础团队，请先保存本届成绩。')) return
     setEventName(nextName.trim() || EVENT_NAME)
-    setTeams(reset)
-    setPublishedTeams(reset)
+    setTeams(cloneTeams(initialTeams))
+    setPublishedTeams(cloneTeams(initialTeams))
     clearAnnouncement()
   }
   const archiveTournament = () => {
